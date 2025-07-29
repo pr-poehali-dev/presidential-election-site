@@ -24,8 +24,8 @@ interface User {
 }
 
 const ElectionPlatform = () => {
-  // Состояние для кандидатов
-  const [candidates, setCandidates] = useState<Candidate[]>([
+  // Начальные кандидаты
+  const initialCandidates: Candidate[] = [
     {
       id: '1',
       name: 'Александр Петров',
@@ -50,9 +50,42 @@ const ElectionPlatform = () => {
       votes: 0,
       description: 'Молодой реформатор, сторонник цифровизации'
     }
-  ]);
+  ];
 
-  // Состояние для пользователей и аутентификации
+  // Функции для работы с localStorage
+  const loadFromStorage = () => {
+    try {
+      const savedCandidates = localStorage.getItem('election-candidates');
+      const savedUsers = localStorage.getItem('election-users');
+      const savedCurrentUser = localStorage.getItem('election-current-user');
+      
+      return {
+        candidates: savedCandidates ? JSON.parse(savedCandidates) : initialCandidates,
+        users: savedUsers ? JSON.parse(savedUsers) : [],
+        currentUser: savedCurrentUser ? JSON.parse(savedCurrentUser) : null
+      };
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
+      return {
+        candidates: initialCandidates,
+        users: [],
+        currentUser: null
+      };
+    }
+  };
+
+  const saveToStorage = (candidates: Candidate[], users: User[], currentUser: User | null) => {
+    try {
+      localStorage.setItem('election-candidates', JSON.stringify(candidates));
+      localStorage.setItem('election-users', JSON.stringify(users));
+      localStorage.setItem('election-current-user', JSON.stringify(currentUser));
+    } catch (error) {
+      console.error('Ошибка сохранения данных:', error);
+    }
+  };
+
+  // Состояние для кандидатов и пользователей
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [phone, setPhone] = useState('');
@@ -63,6 +96,21 @@ const ElectionPlatform = () => {
   const [showAddCandidate, setShowAddCandidate] = useState(false);
   const [newCandidate, setNewCandidate] = useState<Partial<Candidate>>({});
   const [voteMessage, setVoteMessage] = useState('');
+
+  // Загрузка данных при запуске
+  useEffect(() => {
+    const data = loadFromStorage();
+    setCandidates(data.candidates);
+    setUsers(data.users);
+    setCurrentUser(data.currentUser);
+  }, []);
+
+  // Автосохранение при изменении данных
+  useEffect(() => {
+    if (candidates.length > 0) {
+      saveToStorage(candidates, users, currentUser);
+    }
+  }, [candidates, users, currentUser]);
 
   // Получение общего количества голосов
   const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.votes, 0);
@@ -77,7 +125,8 @@ const ElectionPlatform = () => {
     let user = users.find(u => u.phone === phone);
     if (!user) {
       user = { phone, hasVoted: false };
-      setUsers([...users, user]);
+      const updatedUsers = [...users, user];
+      setUsers(updatedUsers);
     }
     
     setCurrentUser(user);
@@ -109,16 +158,19 @@ const ElectionPlatform = () => {
     }
 
     // Обновляем голоса кандидата
-    setCandidates(prev => prev.map(candidate => 
+    const updatedCandidates = candidates.map(candidate => 
       candidate.id === candidateId 
         ? { ...candidate, votes: candidate.votes + 1 }
         : candidate
-    ));
+    );
+    setCandidates(updatedCandidates);
 
     // Обновляем статус пользователя
     const updatedUser = { ...currentUser, hasVoted: true, votedFor: candidateId };
+    const updatedUsers = users.map(u => u.phone === currentUser.phone ? updatedUser : u);
+    
     setCurrentUser(updatedUser);
-    setUsers(prev => prev.map(u => u.phone === currentUser.phone ? updatedUser : u));
+    setUsers(updatedUsers);
 
     const candidateName = candidates.find(c => c.id === candidateId)?.name;
     setVoteMessage(`Ваш голос за ${candidateName} засчитан!`);
@@ -141,14 +193,16 @@ const ElectionPlatform = () => {
       description: newCandidate.description || 'Описание кандидата'
     };
 
-    setCandidates([...candidates, candidate]);
+    const updatedCandidates = [...candidates, candidate];
+    setCandidates(updatedCandidates);
     setNewCandidate({});
     setShowAddCandidate(false);
   };
 
   // Удаление кандидата
   const removeCandidate = (candidateId: string) => {
-    setCandidates(candidates.filter(c => c.id !== candidateId));
+    const updatedCandidates = candidates.filter(c => c.id !== candidateId);
+    setCandidates(updatedCandidates);
   };
 
   return (
