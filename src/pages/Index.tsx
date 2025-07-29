@@ -89,9 +89,6 @@ const ElectionPlatform = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [phone, setPhone] = useState('');
-  const [smsCode, setSmsCode] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [isCodeSent, setIsCodeSent] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -118,32 +115,10 @@ const ElectionPlatform = () => {
   // Получение общего количества голосов
   const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.votes, 0);
 
-  // Генерация и отправка SMS-кода
-  const sendSmsCode = () => {
+  // Аутентификация пользователя
+  const authenticateUser = () => {
     if (phone.length < 10) {
       alert('Введите корректный номер телефона');
-      return;
-    }
-
-    // Генерируем 4-значный код
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedCode(code);
-    setIsCodeSent(true);
-    
-    // Имитация отправки SMS (в реальном приложении здесь был бы API вызов)
-    alert(`SMS-код отправлен на номер ${phone}: ${code}`);
-    console.log(`SMS код для ${phone}: ${code}`);
-  };
-
-  // Проверка SMS-кода и аутентификация
-  const authenticateUser = () => {
-    if (!isCodeSent) {
-      sendSmsCode();
-      return;
-    }
-
-    if (smsCode !== generatedCode) {
-      alert('Неверный код подтверждения');
       return;
     }
 
@@ -156,20 +131,7 @@ const ElectionPlatform = () => {
     
     setCurrentUser(user);
     setShowAuthDialog(false);
-    // Сброс состояния
     setPhone('');
-    setSmsCode('');
-    setGeneratedCode('');
-    setIsCodeSent(false);
-  };
-
-  // Сброс состояния при закрытии диалога
-  const closeAuthDialog = () => {
-    setShowAuthDialog(false);
-    setPhone('');
-    setSmsCode('');
-    setGeneratedCode('');
-    setIsCodeSent(false);
   };
 
   // Вход в админ панель
@@ -420,12 +382,10 @@ const ElectionPlatform = () => {
         </div>
 
         {/* Диалог входа пользователя */}
-        <Dialog open={showAuthDialog} onOpenChange={closeAuthDialog}>
+        <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                {!isCodeSent ? 'Вход в систему' : 'Подтверждение номера'}
-              </DialogTitle>
+              <DialogTitle>Вход в систему</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -435,38 +395,10 @@ const ElectionPlatform = () => {
                   placeholder="+7 (999) 123-45-67"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  disabled={isCodeSent}
                 />
               </div>
-              
-              {isCodeSent && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Код из SMS</label>
-                  <Input 
-                    type="text"
-                    placeholder="Введите 4-значный код"
-                    value={smsCode}
-                    onChange={(e) => setSmsCode(e.target.value)}
-                    maxLength={4}
-                  />
-                  <p className="text-sm text-gray-600 mt-2">
-                    Код отправлен на номер {phone}
-                  </p>
-                  <button
-                    onClick={() => {
-                      setIsCodeSent(false);
-                      setSmsCode('');
-                      setGeneratedCode('');
-                    }}
-                    className="text-blue-600 text-sm mt-1 hover:underline"
-                  >
-                    Изменить номер
-                  </button>
-                </div>
-              )}
-              
               <Button onClick={authenticateUser} className="w-full">
-                {!isCodeSent ? 'Получить код' : 'Подтвердить'}
+                Войти
               </Button>
             </div>
           </DialogContent>
